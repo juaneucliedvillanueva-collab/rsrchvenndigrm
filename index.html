@@ -4,25 +4,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sliding Puzzle</title>
+<title>Puzzle</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
     min-height: 100vh;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    place-items: center;
     background: #faf9f6;
     font-family: Arial, sans-serif;
+    padding: 20px;
 }
 
 .game {
-    width: 100%;
-    max-width: 420px;
+    width: min(100%, 420px);
     text-align: center;
 }
 
@@ -40,10 +40,12 @@ body {
 
 .tile {
     border: 0;
-    border-radius: 4px;
     padding: 0;
+    min-width: 0;
+    min-height: 0;
     background-repeat: no-repeat;
     cursor: pointer;
+    border-radius: 3px;
 }
 
 .empty {
@@ -51,64 +53,66 @@ body {
     cursor: default;
 }
 
-button {
+button#shuffle {
+    margin-top: 18px;
+    padding: 12px 28px;
     border: 0;
     border-radius: 25px;
-    padding: 12px 25px;
-    margin-top: 18px;
     background: #f3b63f;
     color: #292929;
-    font-weight: bold;
     font-size: 15px;
+    font-weight: bold;
     cursor: pointer;
 }
 
 #message {
     font-size: 14px;
-    margin-top: 16px;
+    color: #555;
+    margin-top: 15px;
 }
 </style>
 </head>
 
 <body>
+
 <div class="game">
     <div id="puzzle"></div>
     <button id="shuffle">Shuffle</button>
-    <p id="message">Put the picture back together!</p>
+    <p id="message">Loading picture...</p>
 </div>
 
 <script>
-const IMAGE = "puzzle.png";
+// CHANGE THIS to your image's exact filename.
+const IMAGE = "./volleyball.png";
 
 const puzzle = document.getElementById("puzzle");
 const message = document.getElementById("message");
 
-let tiles = [0,1,2,3,4,5,6,7,8];
+let pieces = [0,1,2,3,4,5,6,7,8];
 let solved = true;
-let ready = false;
+let imageReady = false;
 
+// Load the fixed image once.
 const picture = new Image();
 
 picture.onload = () => {
-    ready = true;
-    draw();
+    imageReady = true;
+    showPuzzle();
+    message.textContent = "Press Shuffle to play!";
 };
 
 picture.onerror = () => {
     message.textContent =
-        "Image not found. Check volleyball.png in your repository.";
+        "Image not found. Check the image filename and folder.";
 };
 
 picture.src = IMAGE;
 
-function isSolved() {
-    return tiles.every((tile, index) => tile === index);
-}
-
-function draw() {
+function showPuzzle() {
     puzzle.innerHTML = "";
 
-    if (solved && ready) {
+    // Display the complete picture after solving.
+    if (solved && imageReady) {
         puzzle.style.display = "block";
         puzzle.style.padding = "0";
         puzzle.style.background =
@@ -120,7 +124,7 @@ function draw() {
     puzzle.style.padding = "4px";
     puzzle.style.background = "#dedbd4";
 
-    tiles.forEach((piece, position) => {
+    pieces.forEach((piece, index) => {
         const tile = document.createElement("button");
         tile.className = "tile";
 
@@ -136,46 +140,51 @@ function draw() {
             tile.style.backgroundPosition =
                 `${x * 50}% ${y * 50}%`;
 
-            tile.addEventListener("click", () => move(position));
+            tile.onclick = () => move(index);
         }
 
         puzzle.appendChild(tile);
     });
 }
 
-function move(position) {
-    if (solved || !ready) return;
+function move(index) {
+    if (solved) return;
 
-    const empty = tiles.indexOf(8);
+    const empty = pieces.indexOf(8);
 
     const sameRow =
-        Math.floor(position / 3) === Math.floor(empty / 3);
+        Math.floor(index / 3) === Math.floor(empty / 3);
 
-    const adjacent =
-        Math.abs(position - empty) === 3 ||
-        (sameRow && Math.abs(position - empty) === 1);
+    const nextToEmpty =
+        Math.abs(index - empty) === 3 ||
+        (sameRow && Math.abs(index - empty) === 1);
 
-    if (!adjacent) return;
+    if (!nextToEmpty) return;
 
-    [tiles[position], tiles[empty]] =
-        [tiles[empty], tiles[position]];
+    [pieces[index], pieces[empty]] =
+        [pieces[empty], pieces[index]];
 
-    solved = isSolved();
-    draw();
+    solved = pieces.every((p, i) => p === i);
 
-    if (solved) {
-        message.textContent = "You solved it! 🏐";
-    }
+    showPuzzle();
+
+    message.textContent = solved
+        ? "You solved it! 🏐"
+        : "Keep going!";
 }
 
 function shuffle() {
-    if (!ready) return;
+    if (!imageReady) {
+        message.textContent = "The picture hasn't loaded yet.";
+        return;
+    }
 
-    tiles = [0,1,2,3,4,5,6,7,8];
+    pieces = [0,1,2,3,4,5,6,7,8];
 
     let empty = 8;
     let previous = -1;
 
+    // Shuffle with legal moves so the puzzle is solvable.
     for (let i = 0; i < 100; i++) {
         const options = [];
         const row = Math.floor(empty / 3);
@@ -186,26 +195,28 @@ function shuffle() {
         if (col > 0) options.push(empty - 1);
         if (col < 2) options.push(empty + 1);
 
-        const possible = options.filter(p => p !== previous);
-        const next =
-            possible[Math.floor(Math.random() * possible.length)];
+        const valid = options.filter(n => n !== previous);
+        const next = valid[Math.floor(Math.random() * valid.length)];
 
-        [tiles[empty], tiles[next]] =
-            [tiles[next], tiles[empty]];
+        [pieces[empty], pieces[next]] =
+            [pieces[next], pieces[empty]];
 
         previous = empty;
         empty = next;
     }
 
-    if (isSolved()) return shuffle();
+    if (pieces.every((p, i) => p === i)) {
+        return shuffle();
+    }
 
     solved = false;
-    draw();
+    showPuzzle();
     message.textContent = "Put the picture back together!";
 }
 
-document.getElementById("shuffle").addEventListener("click", shuffle);
+document.getElementById("shuffle").onclick = shuffle;
 </script>
+
 </body>
 </html>
 ```
