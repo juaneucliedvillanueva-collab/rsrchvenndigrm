@@ -1,0 +1,211 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sliding Puzzle</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #faf9f6;
+    font-family: Arial, sans-serif;
+}
+
+.game {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+#puzzle {
+    width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    background: #dedbd4;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.tile {
+    border: 0;
+    border-radius: 4px;
+    padding: 0;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.empty {
+    background: #faf9f6 !important;
+    cursor: default;
+}
+
+button {
+    border: 0;
+    border-radius: 25px;
+    padding: 12px 25px;
+    margin-top: 18px;
+    background: #f3b63f;
+    color: #292929;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+#message {
+    font-size: 14px;
+    margin-top: 16px;
+}
+</style>
+</head>
+
+<body>
+<div class="game">
+    <div id="puzzle"></div>
+    <button id="shuffle">Shuffle</button>
+    <p id="message">Put the picture back together!</p>
+</div>
+
+<script>
+const IMAGE = "volleyball.png";
+
+const puzzle = document.getElementById("puzzle");
+const message = document.getElementById("message");
+
+let tiles = [0,1,2,3,4,5,6,7,8];
+let solved = true;
+let ready = false;
+
+const picture = new Image();
+
+picture.onload = () => {
+    ready = true;
+    draw();
+};
+
+picture.onerror = () => {
+    message.textContent =
+        "Image not found. Check volleyball.png in your repository.";
+};
+
+picture.src = IMAGE;
+
+function isSolved() {
+    return tiles.every((tile, index) => tile === index);
+}
+
+function draw() {
+    puzzle.innerHTML = "";
+
+    if (solved && ready) {
+        puzzle.style.display = "block";
+        puzzle.style.padding = "0";
+        puzzle.style.background =
+            `url("${IMAGE}") center / 100% 100% no-repeat`;
+        return;
+    }
+
+    puzzle.style.display = "grid";
+    puzzle.style.padding = "4px";
+    puzzle.style.background = "#dedbd4";
+
+    tiles.forEach((piece, position) => {
+        const tile = document.createElement("button");
+        tile.className = "tile";
+
+        if (piece === 8) {
+            tile.classList.add("empty");
+            tile.disabled = true;
+        } else {
+            const x = piece % 3;
+            const y = Math.floor(piece / 3);
+
+            tile.style.backgroundImage = `url("${IMAGE}")`;
+            tile.style.backgroundSize = "300% 300%";
+            tile.style.backgroundPosition =
+                `${x * 50}% ${y * 50}%`;
+
+            tile.addEventListener("click", () => move(position));
+        }
+
+        puzzle.appendChild(tile);
+    });
+}
+
+function move(position) {
+    if (solved || !ready) return;
+
+    const empty = tiles.indexOf(8);
+
+    const sameRow =
+        Math.floor(position / 3) === Math.floor(empty / 3);
+
+    const adjacent =
+        Math.abs(position - empty) === 3 ||
+        (sameRow && Math.abs(position - empty) === 1);
+
+    if (!adjacent) return;
+
+    [tiles[position], tiles[empty]] =
+        [tiles[empty], tiles[position]];
+
+    solved = isSolved();
+    draw();
+
+    if (solved) {
+        message.textContent = "You solved it! 🏐";
+    }
+}
+
+function shuffle() {
+    if (!ready) return;
+
+    tiles = [0,1,2,3,4,5,6,7,8];
+
+    let empty = 8;
+    let previous = -1;
+
+    for (let i = 0; i < 100; i++) {
+        const options = [];
+        const row = Math.floor(empty / 3);
+        const col = empty % 3;
+
+        if (row > 0) options.push(empty - 3);
+        if (row < 2) options.push(empty + 3);
+        if (col > 0) options.push(empty - 1);
+        if (col < 2) options.push(empty + 1);
+
+        const possible = options.filter(p => p !== previous);
+        const next =
+            possible[Math.floor(Math.random() * possible.length)];
+
+        [tiles[empty], tiles[next]] =
+            [tiles[next], tiles[empty]];
+
+        previous = empty;
+        empty = next;
+    }
+
+    if (isSolved()) return shuffle();
+
+    solved = false;
+    draw();
+    message.textContent = "Put the picture back together!";
+}
+
+document.getElementById("shuffle").addEventListener("click", shuffle);
+</script>
+</body>
+</html>
+```
